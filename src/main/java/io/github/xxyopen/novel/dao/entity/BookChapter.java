@@ -47,6 +47,16 @@ public class BookChapter implements Serializable {
      */
     private Integer isVip;
 
+    /**
+     * 章节价格;单位：屋币
+     */
+    private Integer chapterPrice;
+
+    /**
+     * 是否限免;0-非限免 1-限免
+     */
+    private Integer isFree;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
@@ -100,6 +110,22 @@ public class BookChapter implements Serializable {
         this.isVip = isVip;
     }
 
+    public Integer getChapterPrice() {
+        return chapterPrice;
+    }
+
+    public void setChapterPrice(Integer chapterPrice) {
+        this.chapterPrice = chapterPrice;
+    }
+
+    public Integer getIsFree() {
+        return isFree;
+    }
+
+    public void setIsFree(Integer isFree) {
+        this.isFree = isFree;
+    }
+
     public LocalDateTime getCreateTime() {
         return createTime;
     }
@@ -125,6 +151,8 @@ public class BookChapter implements Serializable {
         ", chapterName=" + chapterName +
         ", wordCount=" + wordCount +
         ", isVip=" + isVip +
+        ", chapterPrice=" + chapterPrice +
+        ", isFree=" + isFree +
         ", createTime=" + createTime +
         ", updateTime=" + updateTime +
         "}";

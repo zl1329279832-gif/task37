@@ -2,6 +2,7 @@ package io.github.xxyopen.novel.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.github.xxyopen.novel.core.auth.UserHolder;
+import io.github.xxyopen.novel.core.common.constant.CommonConsts;
 import io.github.xxyopen.novel.core.common.constant.ErrorCodeEnum;
 import io.github.xxyopen.novel.core.common.resp.RestResp;
 import io.github.xxyopen.novel.core.constant.DatabaseConsts;
@@ -10,6 +11,7 @@ import io.github.xxyopen.novel.dao.mapper.BookChapterMapper;
 import io.github.xxyopen.novel.dao.mapper.BookCommentMapper;
 import io.github.xxyopen.novel.dao.mapper.BookContentMapper;
 import io.github.xxyopen.novel.dao.mapper.BookInfoMapper;
+import io.github.xxyopen.novel.dao.mapper.UserConsumeLogMapper;
 import io.github.xxyopen.novel.dto.AuthorInfoDto;
 import io.github.xxyopen.novel.dto.req.BookAddReqDto;
 import io.github.xxyopen.novel.dto.req.ChapterAddReqDto;
@@ -65,6 +67,8 @@ public class BookServiceImpl implements BookService {
     private final UserDaoManager userDaoManager;
 
     private final AmqpMsgManager amqpMsgManager;
+
+    private final UserConsumeLogMapper userConsumeLogMapper;
 
     private static final Integer REC_BOOK_COUNT = 4;
 
@@ -314,6 +318,8 @@ public class BookServiceImpl implements BookService {
         newBookChapter.setChapterNum(chapterNum);
         newBookChapter.setWordCount(dto.getChapterContent().length());
         newBookChapter.setIsVip(dto.getIsVip());
+        newBookChapter.setChapterPrice(dto.getChapterPrice());
+        newBookChapter.setIsFree(0);
         newBookChapter.setCreateTime(LocalDateTime.now());
         newBookChapter.setUpdateTime(LocalDateTime.now());
         bookChapterMapper.insert(newBookChapter);
@@ -355,11 +361,43 @@ public class BookServiceImpl implements BookService {
         // 查询小说信息
         BookInfoRespDto bookInfo = bookInfoCacheManager.getBookInfo(bookChapter.getBookId());
 
+        // VIP 章节校验
+        Integer isVip = bookChapter.getIsVip();
+        Integer isBought = CommonConsts.NO;
+        Integer chapterPrice = bookChapter.getChapterPrice();
+
+        if (Objects.equals(isVip, CommonConsts.YES)
+                && !Objects.equals(bookChapter.getIsFree(), CommonConsts.YES)) {
+            // VIP章节且非限免，检查用户是否已购买
+            Long userId = UserHolder.getUserId();
+            if (Objects.nonNull(userId)) {
+                QueryWrapper<UserConsumeLog> consumeQuery = new QueryWrapper<>();
+                consumeQuery.eq(DatabaseConsts.UserConsumeLogTable.COLUMN_USER_ID, userId)
+                        .eq(DatabaseConsts.UserConsumeLogTable.COLUMN_PRODUCT_ID, chapterId)
+                        .eq(DatabaseConsts.UserConsumeLogTable.COLUMN_PRODUCT_TYPE, 0);
+                isBought = userConsumeLogMapper.selectCount(consumeQuery) > 0
+                        ? CommonConsts.YES : CommonConsts.NO;
+            }
+            // 未购买则只返回内容摘要
+            if (Objects.equals(isBought, CommonConsts.NO)) {
+                content = content.substring(0, Math.min(content.length(), 30));
+            }
+        } else if (Objects.equals(bookChapter.getIsFree(), CommonConsts.YES)) {
+            // 限免章节视为已购买
+            isBought = CommonConsts.YES;
+        } else {
+            // 免费章节
+            isBought = CommonConsts.YES;
+        }
+
         // 组装数据并返回
         return RestResp.ok(BookContentAboutRespDto.builder()
                 .bookInfo(bookInfo)
                 .chapterInfo(bookChapter)
                 .bookContent(content)
+                .isVip(isVip)
+                .isBought(isBought)
+                .chapterPrice(chapterPrice)
                 .build());
     }
 }

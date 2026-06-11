@@ -2,4 +2,19 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.xxyopen.novel.dao.mapper.UserInfoMapper">
 
+    <update id="deductBalance">
+        update user_info
+        set account_balance = account_balance - #{amount},
+            update_time = now()
+        where id = #{userId}
+          and account_balance >= #{amount}
+    </update>
+
+    <update id="addBalance">
+        update user_info
+        set account_balance = account_balance + #{amount},
+            update_time = now()
+        where id = #{userId}
+    </update>
+
 </mapper>

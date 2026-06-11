@@ -6,14 +6,18 @@ import io.github.xxyopen.novel.core.constant.ApiRouterConsts;
 import io.github.xxyopen.novel.dto.req.AuthorRegisterReqDto;
 import io.github.xxyopen.novel.dto.req.BookAddReqDto;
 import io.github.xxyopen.novel.dto.req.ChapterAddReqDto;
+import io.github.xxyopen.novel.dto.resp.AuthorIncomeDetailRespDto;
+import io.github.xxyopen.novel.dto.resp.AuthorIncomeRespDto;
 import io.github.xxyopen.novel.service.AuthorService;
+import io.github.xxyopen.novel.service.BookPayService;
 import io.github.xxyopen.novel.service.BookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 作家后台-作家模块 API 控制器
@@ -28,6 +32,8 @@ public class AuthorController {
     private final AuthorService authorService;
 
     private final BookService bookService;
+
+    private final BookPayService bookPayService;
 
     /**
      * 作家注册接口
@@ -52,6 +58,33 @@ public class AuthorController {
     @PostMapping("book/chapter")
     public RestResp<Void> publishBookChapter(@Valid @RequestBody ChapterAddReqDto dto) {
         return bookService.saveBookChapter(dto);
+    }
+
+    /**
+     * 作者每日收入明细查询接口
+     */
+    @GetMapping("income/daily")
+    public RestResp<List<AuthorIncomeDetailRespDto>> listDailyIncome(
+            @RequestParam(required = false) Long bookId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+        return authorService.listDailyIncome(UserHolder.getAuthorId(), bookId, startDate, endDate);
+    }
+
+    /**
+     * 作者月度结算列表查询接口
+     */
+    @GetMapping("income/monthly")
+    public RestResp<List<AuthorIncomeRespDto>> listMonthlyIncome() {
+        return authorService.listMonthlyIncome(UserHolder.getAuthorId());
+    }
+
+    /**
+     * 退款接口（管理用途）
+     */
+    @PostMapping("refund")
+    public RestResp<Void> refundChapter(@RequestParam Long userId, @RequestParam Long chapterId) {
+        return bookPayService.refundChapter(userId, chapterId);
     }
 
 }

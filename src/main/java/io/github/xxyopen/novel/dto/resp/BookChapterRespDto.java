@@ -47,6 +47,21 @@ public class BookChapterRespDto implements Serializable {
     private Integer chapterWordCount;
 
     /**
+     * 是否收费;1-收费 0-免费
+     */
+    private Integer isVip;
+
+    /**
+     * 章节价格;单位：屋币
+     */
+    private Integer chapterPrice;
+
+    /**
+     * 是否限免;0-非限免 1-限免
+     */
+    private Integer isFree;
+
+    /**
      * 章节更新时间
      */
     @JsonFormat(pattern = "yyyy/MM/dd HH:dd")

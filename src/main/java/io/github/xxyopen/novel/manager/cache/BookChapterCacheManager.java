@@ -33,6 +33,9 @@ public class BookChapterCacheManager {
                 .chapterNum(bookChapter.getChapterNum())
                 .chapterName(bookChapter.getChapterName())
                 .chapterWordCount(bookChapter.getWordCount())
+                .isVip(bookChapter.getIsVip())
+                .chapterPrice(bookChapter.getChapterPrice())
+                .isFree(bookChapter.getIsFree())
                 .chapterUpdateTime(bookChapter.getUpdateTime())
                 .build();
     }

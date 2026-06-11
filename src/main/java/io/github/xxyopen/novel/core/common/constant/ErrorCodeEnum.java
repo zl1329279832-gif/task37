@@ -103,6 +103,46 @@ public enum ErrorCodeEnum {
     USER_UPLOAD_FILE_TYPE_NOT_MATCH("A0701","用户上传文件类型不匹配"),
 
     /**
+     * 用户余额不足
+     */
+    USER_BALANCE_NOT_ENOUGH("A3001","用户余额不足"),
+
+    /**
+     * 章节已购买
+     */
+    USER_CHAPTER_ALREADY_BOUGHT("A3002","章节已购买"),
+
+    /**
+     * 该章节为免费章节
+     */
+    USER_CHAPTER_NOT_VIP("A3003","该章节为免费章节"),
+
+    /**
+     * 该章节限免中，无需购买
+     */
+    USER_CHAPTER_IS_FREE_TRIAL("A3004","该章节限免中，无需购买"),
+
+    /**
+     * 章节不存在
+     */
+    USER_CHAPTER_NOT_EXIST("A3005","章节不存在"),
+
+    /**
+     * 收入记录不存在
+     */
+    AUTHOR_INCOME_NOT_EXIST("A3006","收入记录不存在"),
+
+    /**
+     * 该月结算已完成
+     */
+    AUTHOR_SETTLE_ALREADY_DONE("A3007","该月结算已完成"),
+
+    /**
+     * 消费记录不存在
+     */
+    USER_CONSUME_NOT_EXIST("A3008","消费记录不存在"),
+
+    /**
      * 一级宏观错误码，系统执行出错
      * */
     SYSTEM_ERROR("B0001","系统执行出错"),

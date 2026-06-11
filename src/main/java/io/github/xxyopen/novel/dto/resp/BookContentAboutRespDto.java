@@ -28,4 +28,19 @@ public class BookContentAboutRespDto {
      */
     private String bookContent;
 
+    /**
+     * 是否VIP章节;1-是 0-否
+     */
+    private Integer isVip;
+
+    /**
+     * 是否已购买;1-已购买 0-未购买
+     */
+    private Integer isBought;
+
+    /**
+     * 章节价格;单位：屋币
+     */
+    private Integer chapterPrice;
+
 }
