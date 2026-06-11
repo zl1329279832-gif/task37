@@ -17,7 +17,7 @@ import io.github.xxyopen.novel.service.ChapterPurchaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,12 +60,15 @@ public class ChapterPurchaseServiceImpl implements ChapterPurchaseService {
 
     private final FinanceProperties financeProperties;
 
+    private final TransactionTemplate transactionTemplate;
+
+    private final AuthorIncomeMapper authorIncomeMapper;
+
     /**
      * VIP 章节内容预览字数
      */
     private static final int PREVIEW_WORD_COUNT = 200;
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
     public RestResp<BookContentAboutRespDto> purchaseChapter(Long userId, Long chapterId) {
         // === Phase 1: 锁外预检 ===
@@ -122,35 +125,38 @@ public class ChapterPurchaseServiceImpl implements ChapterPurchaseService {
                 throw new BusinessException(ErrorCodeEnum.USER_CHAPTER_ALREADY_PURCHASED);
             }
 
-            // === Phase 4: 财务操作（全部在 @Transactional 内） ===
-
-            // 4a. 原子扣减余额
-            int affected = userInfoMapper.deductBalance(userId, price);
-            if (affected == 0) {
-                throw new BusinessException(ErrorCodeEnum.USER_BALANCE_INSUFFICIENT);
+            // 重查限免状态（防止锁外预检后限免状态发生变化）
+            BookChapter latestChapter = bookChapterMapper.selectById(chapterId);
+            if (latestChapter != null && isFreeLimit(latestChapter)) {
+                return buildFullContent(latestChapter);
             }
 
-            // 4b. 创建消费记录
-            UserConsumeLog consumeLog = new UserConsumeLog();
-            consumeLog.setUserId(userId);
-            consumeLog.setAuthorId(bookInfoEntity.getAuthorId());
-            consumeLog.setAmount(price);
-            consumeLog.setProductType(0); // 0 = VIP章节
-            consumeLog.setProductId(chapterId);
-            consumeLog.setProducName(bookChapter.getChapterName());
-            consumeLog.setProducValue(1);
-            consumeLog.setRefundStatus(0);
-            consumeLog.setCreateTime(LocalDateTime.now());
-            consumeLog.setUpdateTime(LocalDateTime.now());
-            userConsumeLogMapper.insert(consumeLog);
+            // === Phase 4: 财务操作（编程式事务，在锁内提交） ===
+            transactionTemplate.executeWithoutResult(status -> {
+                // 4a. 原子扣减余额
+                int affected = userInfoMapper.deductBalance(userId, price);
+                if (affected == 0) {
+                    throw new BusinessException(ErrorCodeEnum.USER_BALANCE_INSUFFICIENT);
+                }
 
-            // 4c. 累计作者日收入
-            accumulateAuthorIncomeDetail(
-                    bookInfoEntity.getAuthorId(),
-                    bookChapter.getBookId(),
-                    userId,
-                    price
-            );
+                // 4b. 幂等插入消费记录（数据库级防重）
+                int inserted = userConsumeLogMapper.insertIdempotent(
+                        userId, price, 0, chapterId,
+                        bookChapter.getChapterName(), 1,
+                        bookInfoEntity.getAuthorId());
+                if (inserted == 0) {
+                    throw new BusinessException(ErrorCodeEnum.USER_CHAPTER_ALREADY_PURCHASED);
+                }
+
+                // 4c. 累计作者日收入
+                accumulateAuthorIncomeDetail(
+                        bookInfoEntity.getAuthorId(),
+                        bookChapter.getBookId(),
+                        userId,
+                        price
+                );
+            });
+            // ← 事务在此已提交（仍在锁内）
 
             log.info("用户 {} 购买章节 {} 成功，消费 {} 屋币", userId, chapterId, price);
 
@@ -190,47 +196,77 @@ public class ChapterPurchaseServiceImpl implements ChapterPurchaseService {
         return buildPreviewContent(bookChapter);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
     public RestResp<Void> refund(Long userId, Long consumeLogId) {
-        // 1. 查找消费记录
-        UserConsumeLog consumeLog = userConsumeLogMapper.selectById(consumeLogId);
-        if (consumeLog == null || !Objects.equals(consumeLog.getUserId(), userId)) {
-            throw new BusinessException(ErrorCodeEnum.USER_REQUEST_PARAM_ERROR);
+        // === 退款分布式锁 ===
+        String lockKey = String.format("refund:lock:%d", consumeLogId);
+        String lockValue = UUID.randomUUID().toString();
+        try {
+            if (!lockManager.tryLock(lockKey, lockValue, 10)) {
+                throw new BusinessException(ErrorCodeEnum.SYSTEM_PURCHASE_LOCK_FAILED);
+            }
+
+            // 1. 查找消费记录
+            UserConsumeLog consumeLog = userConsumeLogMapper.selectById(consumeLogId);
+            if (consumeLog == null || !Objects.equals(consumeLog.getUserId(), userId)) {
+                throw new BusinessException(ErrorCodeEnum.USER_REQUEST_PARAM_ERROR);
+            }
+
+            // 2. 检查是否已退款
+            if (Objects.equals(consumeLog.getRefundStatus(), 1)) {
+                throw new BusinessException(ErrorCodeEnum.USER_REFUND_NOT_ALLOWED);
+            }
+
+            // 查找章节获取 bookId
+            BookChapter bookChapter = bookChapterMapper.selectById(consumeLog.getProductId());
+
+            // === 编程式事务（在锁内提交） ===
+            transactionTemplate.executeWithoutResult(status -> {
+                // 3. 恢复用户余额
+                userInfoMapper.restoreBalance(userId, consumeLog.getAmount());
+
+                // 4. 标记消费记录为已退款
+                consumeLog.setRefundStatus(1);
+                consumeLog.setUpdateTime(LocalDateTime.now());
+                userConsumeLogMapper.updateById(consumeLog);
+
+                // 5. 扣减作者日收入
+                if (bookChapter != null && consumeLog.getAuthorId() != null) {
+                    // 检查该用户当天是否还有其他购买，决定是否扣减 incomeNumber
+                    int remainingPurchases = authorIncomeDetailMapper.countUserPurchasesToday(
+                            consumeLog.getAuthorId(), bookChapter.getBookId(), userId, LocalDate.now());
+                    int numberDecrement = (remainingPurchases <= 1) ? 1 : 0;
+
+                    authorIncomeDetailMapper.deductDailyIncome(
+                            consumeLog.getAuthorId(),
+                            bookChapter.getBookId(),
+                            LocalDate.now(),
+                            consumeLog.getAmount(),
+                            numberDecrement
+                    );
+
+                    // 6. 尝试回滚月度结算（best-effort）
+                    LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+                    int afterTaxDeduction = consumeLog.getAmount()
+                            * (100 - financeProperties.getTaxRate()) / 100;
+                    authorIncomeMapper.deductSettlement(
+                            consumeLog.getAuthorId(),
+                            bookChapter.getBookId(),
+                            currentMonth,
+                            consumeLog.getAmount(),
+                            afterTaxDeduction
+                    );
+                    // deductSettlement 返回 0 时不抛异常（可能尚未结算或已付款）
+                }
+            });
+            // ← 事务在此已提交（仍在锁内）
+
+            log.info("用户 {} 退款成功，消费记录ID {}，退还 {} 屋币", userId, consumeLogId, consumeLog.getAmount());
+            return RestResp.ok();
+
+        } finally {
+            lockManager.releaseLock(lockKey, lockValue);
         }
-
-        // 2. 检查是否已退款
-        if (Objects.equals(consumeLog.getRefundStatus(), 1)) {
-            throw new BusinessException(ErrorCodeEnum.USER_REFUND_NOT_ALLOWED);
-        }
-
-        // 3. 恢复用户余额
-        userInfoMapper.restoreBalance(userId, consumeLog.getAmount());
-
-        // 4. 标记消费记录为已退款
-        consumeLog.setRefundStatus(1);
-        consumeLog.setUpdateTime(LocalDateTime.now());
-        userConsumeLogMapper.updateById(consumeLog);
-
-        // 5. 扣减作者日收入
-        BookChapter bookChapter = bookChapterMapper.selectById(consumeLog.getProductId());
-        if (bookChapter != null && consumeLog.getAuthorId() != null) {
-            // 检查该用户当天是否还有其他购买，决定是否扣减 incomeNumber
-            int remainingPurchases = authorIncomeDetailMapper.countUserPurchasesToday(
-                    consumeLog.getAuthorId(), bookChapter.getBookId(), userId, LocalDate.now());
-            int numberDecrement = (remainingPurchases <= 1) ? 1 : 0;
-
-            authorIncomeDetailMapper.deductDailyIncome(
-                    consumeLog.getAuthorId(),
-                    bookChapter.getBookId(),
-                    LocalDate.now(),
-                    consumeLog.getAmount(),
-                    numberDecrement
-            );
-        }
-
-        log.info("用户 {} 退款成功，消费记录ID {}，退还 {} 屋币", userId, consumeLogId, consumeLog.getAmount());
-        return RestResp.ok();
     }
 
     @Override

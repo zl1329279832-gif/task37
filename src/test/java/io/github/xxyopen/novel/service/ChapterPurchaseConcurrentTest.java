@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -49,6 +51,8 @@ class ChapterPurchaseConcurrentTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private TransactionTemplate transactionTemplate;
+    @Mock private AuthorIncomeMapper authorIncomeMapper;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;
@@ -58,12 +62,27 @@ class ChapterPurchaseConcurrentTest {
 
     @BeforeEach
     void setUp() {
+        // TransactionTemplate 直接执行回调
+        lenient().doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (java.util.function.Consumer<org.springframework.transaction.TransactionStatus>) inv.getArgument(0);
+            callback.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (TransactionCallback<?>) inv.getArgument(0);
+            return callback.doInTransaction(null);
+        });
+
         // 默认配置
         lenient().when(bookChapterMapper.selectById(chapterId)).thenReturn(buildVipChapter());
         lenient().when(bookInfoMapper.selectById(bookId)).thenReturn(buildBookInfo());
         lenient().when(userConsumeLogMapper.selectCount(any())).thenReturn(0L);
         lenient().when(userInfoMapper.deductBalance(eq(userId), eq(chapterPrice))).thenReturn(1);
-        lenient().when(userConsumeLogMapper.insert(any())).thenReturn(1);
+        lenient().when(userConsumeLogMapper.insertIdempotent(
+                anyLong(), anyInt(), anyInt(), anyLong(), anyString(), anyInt(), anyLong()))
+                .thenReturn(1);
         lenient().when(authorIncomeDetailMapper.countUserPurchasesToday(anyLong(), anyLong(), anyLong(), any())).thenReturn(0);
         lenient().when(bookContentCacheManager.getBookContent(chapterId)).thenReturn("VIP章节完整内容");
     }
@@ -138,8 +157,9 @@ class ChapterPurchaseConcurrentTest {
         // 验证：余额仅扣一次
         verify(userInfoMapper, times(1)).deductBalance(eq(userId), eq(chapterPrice));
 
-        // 验证：消费记录仅创建一次
-        verify(userConsumeLogMapper, times(1)).insert(any(UserConsumeLog.class));
+        // 验证：幂等插入仅调用一次
+        verify(userConsumeLogMapper, times(1)).insertIdempotent(
+                anyLong(), anyInt(), anyInt(), anyLong(), anyString(), anyInt(), anyLong());
     }
 
     private BookChapter buildVipChapter() {

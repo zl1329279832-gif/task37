@@ -17,6 +17,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,7 +29,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * 退款回滚测试
- * 场景：退款恢复余额、标记消费记录、扣减作者收入、重复退款拒绝
+ * 场景：退款恢复余额、标记消费记录、扣减作者收入、重复退款拒绝、月度结算回滚
  */
 @ExtendWith(MockitoExtension.class)
 class RefundRollbackTest {
@@ -46,6 +48,8 @@ class RefundRollbackTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private TransactionTemplate transactionTemplate;
+    @Mock private AuthorIncomeMapper authorIncomeMapper;
 
     private final Long userId = 1L;
     private final Long consumeLogId = 999L;
@@ -58,9 +62,26 @@ class RefundRollbackTest {
     void setUp() throws Exception {
         FinanceProperties props = new FinanceProperties();
         props.setDefaultChapterPrice(10);
+        props.setTaxRate(20);
         var field = ChapterPurchaseServiceImpl.class.getDeclaredField("financeProperties");
         field.setAccessible(true);
         field.set(chapterPurchaseService, props);
+
+        // TransactionTemplate 直接执行回调
+        lenient().doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (java.util.function.Consumer<org.springframework.transaction.TransactionStatus>) inv.getArgument(0);
+            callback.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (TransactionCallback<?>) inv.getArgument(0);
+            return callback.doInTransaction(null);
+        });
+
+        // 退款锁默认获取成功
+        lenient().when(lockManager.tryLock(anyString(), anyString(), anyLong())).thenReturn(true);
     }
 
     @Test
@@ -83,11 +104,16 @@ class RefundRollbackTest {
 
         // 当天该用户无其他购买
         when(authorIncomeDetailMapper.countUserPurchasesToday(authorId, bookId, userId, LocalDate.now()))
-                .thenReturn(1); // 退款后只剩这1次（即将被退的这次），所以 numberDecrement=1
+                .thenReturn(1);
 
         // 扣减日收入
         when(authorIncomeDetailMapper.deductDailyIncome(
                 eq(authorId), eq(bookId), eq(LocalDate.now()), eq(purchaseAmount), eq(1)))
+                .thenReturn(1);
+
+        // 月度结算回滚
+        when(authorIncomeMapper.deductSettlement(
+                anyLong(), anyLong(), any(LocalDate.class), anyInt(), anyInt()))
                 .thenReturn(1);
 
         // 执行退款
@@ -106,6 +132,10 @@ class RefundRollbackTest {
         // 验证作者日收入扣减
         verify(authorIncomeDetailMapper).deductDailyIncome(
                 eq(authorId), eq(bookId), eq(LocalDate.now()), eq(purchaseAmount), eq(1));
+
+        // 验证月度结算回滚被调用
+        verify(authorIncomeMapper).deductSettlement(
+                eq(authorId), eq(bookId), any(LocalDate.class), eq(purchaseAmount), eq(8));
     }
 
     @Test
@@ -154,7 +184,7 @@ class RefundRollbackTest {
         UserConsumeLog log = buildConsumeLog();
         when(userConsumeLogMapper.selectById(consumeLogId))
                 .thenReturn(log)        // 第一次调用：未退款
-                .thenReturn(log);       // 第二次调用：模拟已退款（实际中 updateById 会更新 DB）
+                .thenReturn(log);       // 第二次调用
 
         when(userInfoMapper.restoreBalance(userId, purchaseAmount)).thenReturn(1);
         when(userConsumeLogMapper.updateById(any())).thenReturn(1);
@@ -166,6 +196,8 @@ class RefundRollbackTest {
         when(authorIncomeDetailMapper.countUserPurchasesToday(anyLong(), anyLong(), anyLong(), any()))
                 .thenReturn(1);
         when(authorIncomeDetailMapper.deductDailyIncome(anyLong(), anyLong(), any(), anyInt(), anyInt()))
+                .thenReturn(1);
+        when(authorIncomeMapper.deductSettlement(anyLong(), anyLong(), any(), anyInt(), anyInt()))
                 .thenReturn(1);
 
         // 第一次退款成功
@@ -180,6 +212,51 @@ class RefundRollbackTest {
                 () -> chapterPurchaseService.refund(userId, consumeLogId));
 
         assertEquals(ErrorCodeEnum.USER_REFUND_NOT_ALLOWED, ex.getErrorCodeEnum());
+    }
+
+    @Test
+    void testRefund_lockFailed_throwsSystemError() {
+        // 退款锁获取失败
+        when(lockManager.tryLock(anyString(), anyString(), anyLong())).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> chapterPurchaseService.refund(userId, consumeLogId));
+
+        assertEquals(ErrorCodeEnum.SYSTEM_PURCHASE_LOCK_FAILED, ex.getErrorCodeEnum());
+
+        // 验证未进行任何退款操作
+        verify(userConsumeLogMapper, never()).selectById(anyLong());
+        verify(userInfoMapper, never()).restoreBalance(anyLong(), anyInt());
+    }
+
+    @Test
+    void testRefund_settlementNotYetCreated_bestEffort() {
+        // 月度结算尚未创建（deductSettlement 返回 0），退款应仍成功
+        UserConsumeLog log = buildConsumeLog();
+        when(userConsumeLogMapper.selectById(consumeLogId)).thenReturn(log);
+        when(userInfoMapper.restoreBalance(userId, purchaseAmount)).thenReturn(1);
+        when(userConsumeLogMapper.updateById(any(UserConsumeLog.class))).thenReturn(1);
+
+        BookChapter chapter = new BookChapter();
+        chapter.setId(chapterId);
+        chapter.setBookId(bookId);
+        when(bookChapterMapper.selectById(chapterId)).thenReturn(chapter);
+        when(authorIncomeDetailMapper.countUserPurchasesToday(anyLong(), anyLong(), anyLong(), any()))
+                .thenReturn(1);
+        when(authorIncomeDetailMapper.deductDailyIncome(anyLong(), anyLong(), any(), anyInt(), anyInt()))
+                .thenReturn(1);
+
+        // 月度结算不存在，deductSettlement 返回 0
+        when(authorIncomeMapper.deductSettlement(anyLong(), anyLong(), any(), anyInt(), anyInt()))
+                .thenReturn(0);
+
+        // 退款应成功（best-effort，不因结算不存在而失败）
+        RestResp<Void> result = chapterPurchaseService.refund(userId, consumeLogId);
+        assertTrue(result.isOk());
+
+        // 验证 deductSettlement 确实被调用了
+        verify(authorIncomeMapper).deductSettlement(
+                eq(authorId), eq(bookId), any(LocalDate.class), eq(purchaseAmount), anyInt());
     }
 
     private UserConsumeLog buildConsumeLog() {

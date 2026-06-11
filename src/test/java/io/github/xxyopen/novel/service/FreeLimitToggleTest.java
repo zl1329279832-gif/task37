@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -25,7 +27,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * 限免切换测试
- * 场景：章节级限免、全书级限免、取消限免
+ * 场景：章节级限免、全书级限免、取消限免、限免状态竞态
  */
 @ExtendWith(MockitoExtension.class)
 class FreeLimitToggleTest {
@@ -44,6 +46,8 @@ class FreeLimitToggleTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private TransactionTemplate transactionTemplate;
+    @Mock private AuthorIncomeMapper authorIncomeMapper;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;
@@ -56,6 +60,19 @@ class FreeLimitToggleTest {
         var field = ChapterPurchaseServiceImpl.class.getDeclaredField("financeProperties");
         field.setAccessible(true);
         field.set(chapterPurchaseService, props);
+
+        // TransactionTemplate 直接执行回调
+        lenient().doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (java.util.function.Consumer<org.springframework.transaction.TransactionStatus>) inv.getArgument(0);
+            callback.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (TransactionCallback<?>) inv.getArgument(0);
+            return callback.doInTransaction(null);
+        });
 
         // 通用缓存 mock
         lenient().when(bookChapterCacheManager.getChapter(chapterId)).thenReturn(
@@ -167,6 +184,49 @@ class FreeLimitToggleTest {
         assertTrue(result.isOk());
         assertNotNull(result.getData().getBookContent());
         assertTrue(result.getData().getIsPurchased());
+    }
+
+    @Test
+    void testFreeLimitToggledDuringPurchase_returnsFreeContentNoCharge() {
+        // Phase 1（锁外）: isFreeLimit=0 → 进入购买流程
+        // Phase 3（锁内重检）: isFreeLimit=1 → 应返回限免内容，不扣费
+        BookChapter chapterNotFree = buildVipChapter();
+        chapterNotFree.setIsFreeLimit(0);
+
+        BookChapter chapterNowFree = buildVipChapter();
+        chapterNowFree.setIsFreeLimit(1);
+
+        BookInfo bookInfo = new BookInfo();
+        bookInfo.setId(bookId);
+        bookInfo.setAuthorId(5L);
+        bookInfo.setIsFreeLimit(0);
+
+        // 第1次 selectById（Phase 1 锁外预检）→ 无限免
+        // 第2次 selectById（Phase 3 锁内限免重检）→ 已限免（章节级 isFreeLimit=1，不再查 BookInfo）
+        when(bookChapterMapper.selectById(chapterId))
+                .thenReturn(chapterNotFree)   // Phase 1
+                .thenReturn(chapterNowFree);  // Phase 3 锁内重检
+
+        when(bookInfoMapper.selectById(bookId)).thenReturn(bookInfo);
+
+        when(userConsumeLogMapper.selectCount(any())).thenReturn(0L);
+        when(lockManager.tryLock(anyString(), anyString(), anyLong())).thenReturn(true);
+
+        UserInfo user = new UserInfo();
+        user.setAccountBalance(100L);
+        when(userInfoMapper.selectById(userId)).thenReturn(user);
+
+        // 执行购买
+        RestResp<BookContentAboutRespDto> result = chapterPurchaseService.purchaseChapter(userId, chapterId);
+
+        // 应返回完整内容（限免），不应扣费
+        assertTrue(result.isOk());
+        assertNotNull(result.getData().getBookContent());
+
+        // 验证：未扣余额，未创建消费记录
+        verify(userInfoMapper, never()).deductBalance(anyLong(), anyInt());
+        verify(userConsumeLogMapper, never()).insertIdempotent(
+                anyLong(), anyInt(), anyInt(), anyLong(), anyString(), anyInt(), anyLong());
     }
 
     private BookChapter buildVipChapter() {

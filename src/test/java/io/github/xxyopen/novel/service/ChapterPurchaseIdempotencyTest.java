@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -42,6 +44,8 @@ class ChapterPurchaseIdempotencyTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private TransactionTemplate transactionTemplate;
+    @Mock private AuthorIncomeMapper authorIncomeMapper;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;
@@ -54,6 +58,19 @@ class ChapterPurchaseIdempotencyTest {
         var field = ChapterPurchaseServiceImpl.class.getDeclaredField("financeProperties");
         field.setAccessible(true);
         field.set(chapterPurchaseService, props);
+
+        // TransactionTemplate 直接执行回调
+        lenient().doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (java.util.function.Consumer<org.springframework.transaction.TransactionStatus>) inv.getArgument(0);
+            callback.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            var callback = (TransactionCallback<?>) inv.getArgument(0);
+            return callback.doInTransaction(null);
+        });
     }
 
     @Test
@@ -79,7 +96,8 @@ class ChapterPurchaseIdempotencyTest {
 
         // 验证：未扣余额，未创建消费记录
         verify(userInfoMapper, never()).deductBalance(anyLong(), anyInt());
-        verify(userConsumeLogMapper, never()).insert(any());
+        verify(userConsumeLogMapper, never()).insertIdempotent(
+                anyLong(), anyInt(), anyInt(), anyLong(), anyString(), anyInt(), anyLong());
     }
 
     @Test
@@ -149,6 +167,46 @@ class ChapterPurchaseIdempotencyTest {
 
         // 验证：未进行任何财务操作
         verify(userInfoMapper, never()).deductBalance(anyLong(), anyInt());
-        verify(userConsumeLogMapper, never()).insert(any());
+        verify(userConsumeLogMapper, never()).insertIdempotent(
+                anyLong(), anyInt(), anyInt(), anyLong(), anyString(), anyInt(), anyLong());
+    }
+
+    @Test
+    void testDatabaseIdempotency_insertIdempotentReturnsZero() {
+        // 锁外+锁内幂等检查都通过，但数据库级幂等插入返回0（极端并发下重复）
+        BookChapter chapter = new BookChapter();
+        chapter.setId(chapterId);
+        chapter.setBookId(bookId);
+        chapter.setIsVip(1);
+        chapter.setIsFreeLimit(0);
+        chapter.setChapterPrice(10);
+        chapter.setChapterName("VIP章节");
+        when(bookChapterMapper.selectById(chapterId)).thenReturn(chapter);
+
+        BookInfo bookInfo = new BookInfo();
+        bookInfo.setId(bookId);
+        bookInfo.setAuthorId(5L);
+        bookInfo.setIsFreeLimit(0);
+        when(bookInfoMapper.selectById(bookId)).thenReturn(bookInfo);
+
+        when(userConsumeLogMapper.selectCount(any())).thenReturn(0L);
+        when(lockManager.tryLock(anyString(), anyString(), anyLong())).thenReturn(true);
+
+        UserInfo user = new UserInfo();
+        user.setAccountBalance(100L);
+        when(userInfoMapper.selectById(userId)).thenReturn(user);
+
+        when(userInfoMapper.deductBalance(eq(userId), eq(10))).thenReturn(1);
+
+        // 数据库级幂等插入返回0（已有重复记录）
+        when(userConsumeLogMapper.insertIdempotent(
+                anyLong(), anyInt(), anyInt(), anyLong(), anyString(), anyInt(), anyLong()))
+                .thenReturn(0);
+
+        // 执行应抛已购买异常
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> chapterPurchaseService.purchaseChapter(userId, chapterId));
+
+        assertEquals(ErrorCodeEnum.USER_CHAPTER_ALREADY_PURCHASED, ex.getErrorCodeEnum());
     }
 }

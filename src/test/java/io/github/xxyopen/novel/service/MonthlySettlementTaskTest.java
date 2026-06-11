@@ -181,6 +181,42 @@ class MonthlySettlementTaskTest {
     }
 
     @Test
+    void testMonthlySettlement_afterRefund_usesReducedIncome() {
+        // 场景：某天有购买收入 100，之后退款 30，日收入变为 70
+        // 月结时应基于修正后的 70 计算
+        int year = 2026;
+        int month = 3;
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = LocalDate.of(year, month, 31);
+
+        Long authorId = 5L;
+        Long bookId = 10L;
+
+        AuthorBookIncomePair pair = new AuthorBookIncomePair();
+        pair.setAuthorId(authorId);
+        pair.setBookId(bookId);
+        when(authorIncomeDetailMapper.selectDistinctAuthorBookPairs(
+                eq(monthStart), eq(monthEnd))).thenReturn(List.of(pair));
+
+        // 退款已扣减后，日收入汇总为 70
+        when(authorIncomeDetailMapper.sumIncomeForMonth(
+                eq(authorId), eq(bookId), eq(monthStart), eq(monthEnd)))
+                .thenReturn(70);
+
+        when(authorIncomeMapper.insert(any())).thenReturn(1);
+
+        monthlySettlementTask.executeMonthlySettlementForMonth(year, month);
+
+        // 验证：税前 70，税后 70 * 80% = 56
+        ArgumentCaptor<AuthorIncome> captor = ArgumentCaptor.forClass(AuthorIncome.class);
+        verify(authorIncomeMapper).insert(captor.capture());
+
+        AuthorIncome income = captor.getValue();
+        assertEquals(70, income.getPreTaxIncome(), "退款后税前收入应为70");
+        assertEquals(56, income.getAfterTaxIncome(), "退款后税后收入应为56（70 * 80%）");
+    }
+
+    @Test
     void testTaxRate_variousRates() throws Exception {
         // 测试不同税率
         int[][] testCases = {

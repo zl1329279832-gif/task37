@@ -158,4 +158,36 @@ class AuthorIncomeStatisticsTest {
         assertTrue(result.isOk());
         assertTrue(result.getData().isEmpty());
     }
+
+    @Test
+    void testDailyIncome_afterRefund_incomeDecreased() {
+        LocalDate today = LocalDate.now();
+
+        // 场景：原有 4 次购买 40 屋币，退款 1 次后变为 3 次 30 屋币
+        AuthorIncomeDetail detail = new AuthorIncomeDetail();
+        detail.setAuthorId(authorId);
+        detail.setBookId(bookId);
+        detail.setIncomeDate(today);
+        detail.setIncomeAccount(30);  // 退款后 30 屋币
+        detail.setIncomeCount(3);     // 退款后 3 次
+        detail.setIncomeNumber(2);    // 退款后 2 人（退款用户无其他购买）
+
+        when(authorIncomeDetailMapper.selectList(any())).thenReturn(List.of(detail));
+
+        BookInfo bookInfo = new BookInfo();
+        bookInfo.setId(bookId);
+        bookInfo.setBookName("测试小说");
+        when(bookInfoMapper.selectById(bookId)).thenReturn(bookInfo);
+
+        RestResp<List<AuthorIncomeDetailRespDto>> result =
+                authorIncomeService.listDailyIncomeDetails(authorId, bookId, today, today);
+
+        assertTrue(result.isOk());
+        assertEquals(1, result.getData().size());
+
+        AuthorIncomeDetailRespDto resp = result.getData().get(0);
+        assertEquals(30, resp.getIncomeAccount(), "退款后订阅总额应为30屋币");
+        assertEquals(3, resp.getIncomeCount(), "退款后订阅次数应为3次");
+        assertEquals(2, resp.getIncomeNumber(), "退款后订阅人数应为2人");
+    }
 }
