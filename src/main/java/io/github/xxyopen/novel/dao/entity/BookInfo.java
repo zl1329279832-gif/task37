@@ -111,6 +111,11 @@ public class BookInfo implements Serializable {
     private Integer isVip;
 
     /**
+     * 是否限免;0-否 1-是
+     */
+    private Integer isFreeLimit;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;
@@ -265,6 +270,14 @@ public class BookInfo implements Serializable {
         this.isVip = isVip;
     }
 
+    public Integer getIsFreeLimit() {
+        return isFreeLimit;
+    }
+
+    public void setIsFreeLimit(Integer isFreeLimit) {
+        this.isFreeLimit = isFreeLimit;
+    }
+
     public LocalDateTime getCreateTime() {
         return createTime;
     }
@@ -302,6 +315,7 @@ public class BookInfo implements Serializable {
         ", lastChapterName=" + lastChapterName +
         ", lastChapterUpdateTime=" + lastChapterUpdateTime +
         ", isVip=" + isVip +
+        ", isFreeLimit=" + isFreeLimit +
         ", createTime=" + createTime +
         ", updateTime=" + updateTime +
         "}";

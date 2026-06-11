@@ -38,7 +38,11 @@ public class WebConfig implements WebMvcConfigurer {
                         // 拦截作家后台相关请求接口
                         , ApiRouterConsts.API_AUTHOR_URL_PREFIX + "/**"
                         // 拦截平台后台相关请求接口
-                        , ApiRouterConsts.API_ADMIN_URL_PREFIX + "/**")
+                        , ApiRouterConsts.API_ADMIN_URL_PREFIX + "/**"
+                        // 拦截VIP章节内容访问接口
+                        , ApiRouterConsts.API_FRONT_BOOK_CONTENT_VIP_URL_PREFIX + "/**"
+                        // 拦截付费章节购买接口
+                        , ApiRouterConsts.API_FRONT_BOOK_CHAPTER_PURCHASE_URL)
                 // 放行登录注册相关请求接口
                 .excludePathPatterns(ApiRouterConsts.API_FRONT_USER_URL_PREFIX + "/register"
                         , ApiRouterConsts.API_FRONT_USER_URL_PREFIX + "/login"

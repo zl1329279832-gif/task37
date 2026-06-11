@@ -89,5 +89,15 @@ public class BookInfoRespDto {
      */
     private String lastChapterName;
 
+    /**
+     * 是否收费;0-免费 1-收费
+     */
+    private Integer isVip;
+
+    /**
+     * 是否限免;0-否 1-是
+     */
+    private Integer isFreeLimit;
+
 
 }

@@ -4,6 +4,7 @@ import io.github.xxyopen.novel.core.common.resp.RestResp;
 import io.github.xxyopen.novel.dto.req.UserInfoUptReqDto;
 import io.github.xxyopen.novel.dto.req.UserLoginReqDto;
 import io.github.xxyopen.novel.dto.req.UserRegisterReqDto;
+import io.github.xxyopen.novel.dto.resp.UserBalanceRespDto;
 import io.github.xxyopen.novel.dto.resp.UserInfoRespDto;
 import io.github.xxyopen.novel.dto.resp.UserLoginRespDto;
 import io.github.xxyopen.novel.dto.resp.UserRegisterRespDto;
@@ -73,4 +74,11 @@ public interface UserService {
      * @return 用户信息
      */
     RestResp<UserInfoRespDto> getUserInfo(Long userId);
+
+    /**
+     * 查询用户余额
+     * @param userId 用户ID
+     * @return 余额信息
+     */
+    RestResp<UserBalanceRespDto> getBalance(Long userId);
 }

@@ -39,4 +39,9 @@ public class ChapterAddReqDto {
     @NotNull
     private Integer isVip;
 
+    /**
+     * 章节价格（屋币），null 或 0 表示使用系统默认价格
+     */
+    private Integer chapterPrice;
+
 }

@@ -154,6 +154,65 @@ public class DatabaseConsts {
     }
 
     /**
+     * 用户消费记录表
+     */
+    public static class UserConsumeLogTable {
+
+        private UserConsumeLogTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_USER_ID = "user_id";
+
+        public static final String COLUMN_PRODUCT_ID = "product_id";
+
+        public static final String COLUMN_PRODUCT_TYPE = "product_type";
+
+        public static final String COLUMN_REFUND_STATUS = "refund_status";
+
+        public static final String COLUMN_AUTHOR_ID = "author_id";
+
+    }
+
+    /**
+     * 作家收入表
+     */
+    public static class AuthorIncomeTable {
+
+        private AuthorIncomeTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_AUTHOR_ID = "author_id";
+
+        public static final String COLUMN_BOOK_ID = "book_id";
+
+        public static final String COLUMN_INCOME_MONTH = "income_month";
+
+        public static final String COLUMN_CONFIRM_STATUS = "confirm_status";
+
+        public static final String COLUMN_PAY_STATUS = "pay_status";
+
+    }
+
+    /**
+     * 作家收入明细表
+     */
+    public static class AuthorIncomeDetailTable {
+
+        private AuthorIncomeDetailTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_AUTHOR_ID = "author_id";
+
+        public static final String COLUMN_BOOK_ID = "book_id";
+
+        public static final String COLUMN_INCOME_DATE = "income_date";
+
+    }
+
+    /**
      * 通用列枚举类
      */
     @Getter

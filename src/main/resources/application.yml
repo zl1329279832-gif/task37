@@ -87,6 +87,12 @@ novel:
     upload:
       # 上传路径
       path: /Users/xiongxiaoyang/upload
+  # 财务配置
+  finance:
+    # 默认章节价格（屋币）
+    default-chapter-price: 10
+    # 税率百分比，如 20 表示 20%
+    tax-rate: 20
 
 
 

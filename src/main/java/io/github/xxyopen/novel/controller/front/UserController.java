@@ -3,18 +3,20 @@ package io.github.xxyopen.novel.controller.front;
 import io.github.xxyopen.novel.core.auth.UserHolder;
 import io.github.xxyopen.novel.core.common.resp.RestResp;
 import io.github.xxyopen.novel.core.constant.ApiRouterConsts;
+import io.github.xxyopen.novel.dto.req.RefundReqDto;
 import io.github.xxyopen.novel.dto.req.UserCommentReqDto;
 import io.github.xxyopen.novel.dto.req.UserInfoUptReqDto;
 import io.github.xxyopen.novel.dto.req.UserLoginReqDto;
 import io.github.xxyopen.novel.dto.req.UserRegisterReqDto;
-import io.github.xxyopen.novel.dto.resp.UserInfoRespDto;
-import io.github.xxyopen.novel.dto.resp.UserLoginRespDto;
-import io.github.xxyopen.novel.dto.resp.UserRegisterRespDto;
+import io.github.xxyopen.novel.dto.resp.*;
 import io.github.xxyopen.novel.service.BookService;
+import io.github.xxyopen.novel.service.ChapterPurchaseService;
 import io.github.xxyopen.novel.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 前台门户-会员模块 API 控制器
@@ -30,6 +32,8 @@ public class UserController {
     private final UserService userService;
 
     private final BookService bookService;
+
+    private final ChapterPurchaseService chapterPurchaseService;
 
     /**
      * 用户注册接口
@@ -113,6 +117,30 @@ public class UserController {
     @GetMapping("bookshelf_status")
     public RestResp<Integer> getBookshelfStatus(@RequestBody String bookId) {
         return userService.getBookshelfStatus(UserHolder.getUserId(), bookId);
+    }
+
+    /**
+     * 查询用户余额接口
+     */
+    @GetMapping("balance")
+    public RestResp<UserBalanceRespDto> getBalance() {
+        return userService.getBalance(UserHolder.getUserId());
+    }
+
+    /**
+     * 查询用户消费记录接口
+     */
+    @GetMapping("consume_log")
+    public RestResp<List<UserConsumeLogRespDto>> listConsumeLogs(Long bookId) {
+        return chapterPurchaseService.listConsumeLogs(UserHolder.getUserId(), bookId);
+    }
+
+    /**
+     * 退款接口
+     */
+    @PostMapping("refund")
+    public RestResp<Void> refund(@Valid @RequestBody RefundReqDto dto) {
+        return chapterPurchaseService.refund(UserHolder.getUserId(), dto.getConsumeLogId());
     }
 
 }

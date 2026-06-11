@@ -69,6 +69,8 @@ public class BookInfoCacheManager {
                 .picUrl(bookInfo.getPicUrl())
                 .visitCount(bookInfo.getVisitCount())
                 .wordCount(bookInfo.getWordCount())
+                .isVip(bookInfo.getIsVip())
+                .isFreeLimit(bookInfo.getIsFreeLimit())
                 .build();
     }
 

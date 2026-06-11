@@ -96,19 +96,27 @@ public class BookServiceImpl implements BookService {
         // 查询最新章节信息
         BookChapterRespDto bookChapter = bookChapterCacheManager.getChapter(bookInfo.getLastChapterId());
 
-        // 查询章节内容
-        String content = bookContentCacheManager.getBookContent(bookInfo.getLastChapterId());
-
         // 查询章节总数
         QueryWrapper<BookChapter> chapterQueryWrapper = new QueryWrapper<>();
         chapterQueryWrapper.eq(DatabaseConsts.BookChapterTable.COLUMN_BOOK_ID, bookId);
         Long chapterTotal = bookChapterMapper.selectCount(chapterQueryWrapper);
 
+        // 查询章节内容（VIP章节不泄露完整内容）
+        String contentSummary;
+        BookChapter latestChapter = bookChapterMapper.selectById(bookInfo.getLastChapterId());
+        if (latestChapter != null && Objects.equals(latestChapter.getIsVip(), 1)
+                && !Objects.equals(latestChapter.getIsFreeLimit(), 1)) {
+            contentSummary = "VIP章节，请购买后阅读";
+        } else {
+            String content = bookContentCacheManager.getBookContent(bookInfo.getLastChapterId());
+            contentSummary = content.substring(0, Math.min(30, content.length()));
+        }
+
         // 组装数据并返回
         return RestResp.ok(BookChapterAboutRespDto.builder()
                 .chapterInfo(bookChapter)
                 .chapterTotal(chapterTotal)
-                .contentSummary(content.substring(0, 30))
+                .contentSummary(contentSummary)
                 .build());
     }
 
@@ -187,6 +195,9 @@ public class BookServiceImpl implements BookService {
         return RestResp.ok(bookChapterMapper.selectList(queryWrapper).stream().map(v -> BookChapterRespDto.builder()
                 .id(v.getId())
                 .chapterName(v.getChapterName())
+                .isVip(v.getIsVip())
+                .isFreeLimit(v.getIsFreeLimit())
+                .chapterPrice(v.getChapterPrice())
                 .build()).toList());
     }
 
@@ -314,6 +325,8 @@ public class BookServiceImpl implements BookService {
         newBookChapter.setChapterNum(chapterNum);
         newBookChapter.setWordCount(dto.getChapterContent().length());
         newBookChapter.setIsVip(dto.getIsVip());
+        newBookChapter.setChapterPrice(dto.getChapterPrice());
+        newBookChapter.setIsFreeLimit(0);
         newBookChapter.setCreateTime(LocalDateTime.now());
         newBookChapter.setUpdateTime(LocalDateTime.now());
         bookChapterMapper.insert(newBookChapter);

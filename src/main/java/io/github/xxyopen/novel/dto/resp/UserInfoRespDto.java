@@ -27,4 +27,9 @@ public class UserInfoRespDto {
      * 用户性别
      * */
     private Integer userSex;
+
+    /**
+     * 账户余额（屋币）
+     * */
+    private Long accountBalance;
 }

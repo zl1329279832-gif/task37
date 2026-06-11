@@ -82,4 +82,14 @@ public class ApiRouterConsts {
      */
     public static final String API_FRONT_RESOURCE_URL_PREFIX = API_FRONT_URL_PREFIX + RESOURCE_URL_PREFIX;
 
+    /**
+     * 付费章节购买 URL
+     */
+    public static final String API_FRONT_BOOK_CHAPTER_PURCHASE_URL = API_FRONT_BOOK_URL_PREFIX + "/chapter/purchase";
+
+    /**
+     * VIP章节内容访问 URL 前缀
+     */
+    public static final String API_FRONT_BOOK_CONTENT_VIP_URL_PREFIX = API_FRONT_BOOK_URL_PREFIX + "/content/vip";
+
 }

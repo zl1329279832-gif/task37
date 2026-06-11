@@ -28,4 +28,29 @@ public class BookContentAboutRespDto {
      */
     private String bookContent;
 
+    /**
+     * 是否需要购买
+     */
+    private Boolean needPurchase;
+
+    /**
+     * 章节价格（屋币）
+     */
+    private Integer chapterPrice;
+
+    /**
+     * 已购买
+     */
+    private Boolean isPurchased;
+
+    /**
+     * 限免中
+     */
+    private Boolean isFreeLimit;
+
+    /**
+     * 章节内容预览（前200字，仅在 needPurchase=true 时返回）
+     */
+    private String previewContent;
+
 }

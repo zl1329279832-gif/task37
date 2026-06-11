@@ -1,12 +1,16 @@
 package io.github.xxyopen.novel.controller.front;
 
+import io.github.xxyopen.novel.core.auth.UserHolder;
 import io.github.xxyopen.novel.core.common.resp.PageRespDto;
 import io.github.xxyopen.novel.core.constant.ApiRouterConsts;
 import io.github.xxyopen.novel.core.common.resp.RestResp;
 import io.github.xxyopen.novel.dto.req.BookSearchReqDto;
+import io.github.xxyopen.novel.dto.req.ChapterPurchaseReqDto;
 import io.github.xxyopen.novel.dto.resp.*;
 import io.github.xxyopen.novel.service.BookService;
+import io.github.xxyopen.novel.service.ChapterPurchaseService;
 import io.github.xxyopen.novel.service.SearchService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +31,8 @@ public class BookController {
     private final BookService bookService;
 
     private final SearchService searchService;
+
+    private final ChapterPurchaseService chapterPurchaseService;
 
     /**
      * 小说分类列表查询接口
@@ -90,6 +96,26 @@ public class BookController {
     @GetMapping("content/{chapterId}")
     public RestResp<BookContentAboutRespDto> getBookContentAbout(@PathVariable("chapterId") Long chapterId) {
         return bookService.getBookContentAbout(chapterId);
+    }
+
+    /**
+     * VIP章节内容查询接口（含访问控制）
+     */
+    @GetMapping("content/vip/{chapterId}")
+    public RestResp<BookContentAboutRespDto> getChapterContentWithAccessControl(
+            @PathVariable("chapterId") Long chapterId) {
+        return chapterPurchaseService.getChapterContentWithAccessControl(
+                UserHolder.getUserId(), chapterId);
+    }
+
+    /**
+     * 付费章节购买接口
+     */
+    @PostMapping("chapter/purchase")
+    public RestResp<BookContentAboutRespDto> purchaseChapter(
+            @Valid @RequestBody ChapterPurchaseReqDto dto) {
+        return chapterPurchaseService.purchaseChapter(
+                UserHolder.getUserId(), dto.getChapterId());
     }
 
     /**

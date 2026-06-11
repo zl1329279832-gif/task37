@@ -56,6 +56,16 @@ public class UserConsumeLog implements Serializable {
     private Integer producValue;
 
     /**
+     * 退款状态;0-正常 1-已退款
+     */
+    private Integer refundStatus;
+
+    /**
+     * 作者ID
+     */
+    private Long authorId;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;
@@ -122,6 +132,22 @@ public class UserConsumeLog implements Serializable {
         this.producValue = producValue;
     }
 
+    public Integer getRefundStatus() {
+        return refundStatus;
+    }
+
+    public void setRefundStatus(Integer refundStatus) {
+        this.refundStatus = refundStatus;
+    }
+
+    public Long getAuthorId() {
+        return authorId;
+    }
+
+    public void setAuthorId(Long authorId) {
+        this.authorId = authorId;
+    }
+
     public LocalDateTime getCreateTime() {
         return createTime;
     }
@@ -148,6 +174,8 @@ public class UserConsumeLog implements Serializable {
         ", productId=" + productId +
         ", producName=" + producName +
         ", producValue=" + producValue +
+        ", refundStatus=" + refundStatus +
+        ", authorId=" + authorId +
         ", createTime=" + createTime +
         ", updateTime=" + updateTime +
         "}";

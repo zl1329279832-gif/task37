@@ -120,7 +120,52 @@ public enum ErrorCodeEnum {
     /**
      * 一级宏观错误码，中间件服务出错
      * */
-    MIDDLEWARE_SERVICE_ERROR("C0100","中间件服务出错")
+    MIDDLEWARE_SERVICE_ERROR("C0100","中间件服务出错"),
+
+    /**
+     * 用户余额不足
+     * */
+    USER_BALANCE_INSUFFICIENT("A0501","用户余额不足"),
+
+    /**
+     * 章节已购买
+     * */
+    USER_CHAPTER_ALREADY_PURCHASED("A0502","章节已购买"),
+
+    /**
+     * 章节不存在
+     * */
+    USER_CHAPTER_NOT_EXIST("A0503","章节不存在"),
+
+    /**
+     * 小说不存在
+     * */
+    USER_BOOK_NOT_EXIST("A0504","小说不存在"),
+
+    /**
+     * 不能购买自己的章节
+     * */
+    USER_PURCHASE_OWN_CHAPTER("A0505","不能购买自己的章节"),
+
+    /**
+     * 不符合退款条件
+     * */
+    USER_REFUND_NOT_ALLOWED("A0506","不符合退款条件"),
+
+    /**
+     * 稿费已确认无法回滚
+     * */
+    USER_SETTLEMENT_CONFIRMED("A0507","稿费已确认无法回滚"),
+
+    /**
+     * 系统繁忙请稍后重试
+     * */
+    SYSTEM_PURCHASE_LOCK_FAILED("B0201","系统繁忙请稍后重试"),
+
+    /**
+     * 结算系统异常
+     * */
+    SYSTEM_SETTLEMENT_ERROR("B0202","结算系统异常")
     ;
 
     /**
