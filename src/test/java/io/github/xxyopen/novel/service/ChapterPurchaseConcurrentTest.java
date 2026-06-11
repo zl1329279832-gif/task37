@@ -44,6 +44,7 @@ class ChapterPurchaseConcurrentTest {
     @Mock private UserInfoMapper userInfoMapper;
     @Mock private UserConsumeLogMapper userConsumeLogMapper;
     @Mock private AuthorIncomeDetailMapper authorIncomeDetailMapper;
+    @Mock private AuthorIncomeMapper authorIncomeMapper;
     @Mock private AuthorInfoMapper authorInfoMapper;
     @Mock private BookChapterCacheManager bookChapterCacheManager;
     @Mock private BookInfoCacheManager bookInfoCacheManager;

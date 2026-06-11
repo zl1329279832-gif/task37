@@ -64,6 +64,10 @@ class MonthlySettlementTaskTest {
         when(authorIncomeDetailMapper.selectDistinctAuthorBookPairs(
                 eq(monthStart), eq(monthEnd))).thenReturn(List.of(pair));
 
+        // 无已有结算记录
+        when(authorIncomeMapper.countByAuthorBookMonth(eq(authorId), eq(bookId), eq(monthStart)))
+                .thenReturn(0);
+
         // 总收入 1500 屋币
         when(authorIncomeDetailMapper.sumIncomeForMonth(
                 eq(authorId), eq(bookId), eq(monthStart), eq(monthEnd)))
@@ -109,6 +113,12 @@ class MonthlySettlementTaskTest {
         when(authorIncomeDetailMapper.selectDistinctAuthorBookPairs(
                 eq(monthStart), eq(monthEnd))).thenReturn(List.of(pair1, pair2));
 
+        // 无已有结算记录
+        when(authorIncomeMapper.countByAuthorBookMonth(eq(authorId), eq(10L), eq(monthStart)))
+                .thenReturn(0);
+        when(authorIncomeMapper.countByAuthorBookMonth(eq(authorId), eq(20L), eq(monthStart)))
+                .thenReturn(0);
+
         // 书1收入 1000，书2收入 500
         when(authorIncomeDetailMapper.sumIncomeForMonth(
                 eq(authorId), eq(10L), eq(monthStart), eq(monthEnd))).thenReturn(1000);
@@ -152,6 +162,9 @@ class MonthlySettlementTaskTest {
         pair.setBookId(10L);
         when(authorIncomeDetailMapper.selectDistinctAuthorBookPairs(
                 eq(monthStart), eq(monthEnd))).thenReturn(List.of(pair));
+
+        when(authorIncomeMapper.countByAuthorBookMonth(eq(5L), eq(10L), eq(monthStart)))
+                .thenReturn(0);
 
         when(authorIncomeDetailMapper.sumIncomeForMonth(
                 anyLong(), anyLong(), any(), any())).thenReturn(0);
@@ -213,6 +226,8 @@ class MonthlySettlementTaskTest {
                     eq(monthStart), eq(monthEnd))).thenReturn(List.of(pair));
             when(authorIncomeDetailMapper.sumIncomeForMonth(
                     eq(1L), eq(1L), eq(monthStart), eq(monthEnd))).thenReturn(totalIncome);
+            when(authorIncomeMapper.countByAuthorBookMonth(eq(1L), eq(1L), eq(monthStart)))
+                    .thenReturn(0);
             when(authorIncomeMapper.insert(any())).thenReturn(1);
 
             monthlySettlementTask.executeMonthlySettlementForMonth(2026, 1);
@@ -227,5 +242,56 @@ class MonthlySettlementTaskTest {
             // 重置 mock 用于下次循环
             reset(authorIncomeDetailMapper, authorIncomeMapper);
         }
+    }
+
+    @Test
+    void testMonthlySettlement_idempotent_skipExistingRecords() {
+        int year = 2026;
+        int month = 3;
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = LocalDate.of(year, month, 31);
+
+        Long authorId = 5L;
+        Long bookId = 10L;
+
+        AuthorBookIncomePair pair = new AuthorBookIncomePair();
+        pair.setAuthorId(authorId);
+        pair.setBookId(bookId);
+        when(authorIncomeDetailMapper.selectDistinctAuthorBookPairs(
+                eq(monthStart), eq(monthEnd))).thenReturn(List.of(pair));
+
+        // 已存在结算记录
+        when(authorIncomeMapper.countByAuthorBookMonth(eq(authorId), eq(bookId), eq(monthStart)))
+                .thenReturn(1);
+
+        monthlySettlementTask.executeMonthlySettlementForMonth(year, month);
+
+        // 不应查询日收入也不应插入新记录
+        verify(authorIncomeDetailMapper, never()).sumIncomeForMonth(anyLong(), anyLong(), any(), any());
+        verify(authorIncomeMapper, never()).insert(any());
+    }
+
+    @Test
+    void testMonthlySettlement_negativeIncome_afterRefunds_noRecord() {
+        int year = 2026;
+        int month = 3;
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = LocalDate.of(year, month, 31);
+
+        AuthorBookIncomePair pair = new AuthorBookIncomePair();
+        pair.setAuthorId(5L);
+        pair.setBookId(10L);
+        when(authorIncomeDetailMapper.selectDistinctAuthorBookPairs(
+                eq(monthStart), eq(monthEnd))).thenReturn(List.of(pair));
+        when(authorIncomeMapper.countByAuthorBookMonth(anyLong(), anyLong(), any())).thenReturn(0);
+
+        // 全部退款后日收入为负
+        when(authorIncomeDetailMapper.sumIncomeForMonth(
+                anyLong(), anyLong(), any(), any())).thenReturn(-10);
+
+        monthlySettlementTask.executeMonthlySettlementForMonth(year, month);
+
+        // 负收入不应插入结算记录
+        verify(authorIncomeMapper, never()).insert(any());
     }
 }

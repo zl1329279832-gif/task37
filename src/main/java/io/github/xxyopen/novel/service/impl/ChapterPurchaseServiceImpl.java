@@ -48,6 +48,8 @@ public class ChapterPurchaseServiceImpl implements ChapterPurchaseService {
 
     private final AuthorIncomeDetailMapper authorIncomeDetailMapper;
 
+    private final AuthorIncomeMapper authorIncomeMapper;
+
     private final AuthorInfoMapper authorInfoMapper;
 
     private final BookChapterCacheManager bookChapterCacheManager;
@@ -111,6 +113,12 @@ public class ChapterPurchaseServiceImpl implements ChapterPurchaseService {
             }
 
             // === Phase 3: 锁内双重检查 ===
+            // 重查限免状态（防止锁等待期间章节被切为限免）
+            BookChapter freshChapter = bookChapterMapper.selectById(chapterId);
+            if (freshChapter != null && isFreeLimit(freshChapter)) {
+                return buildFullContent(freshChapter);
+            }
+
             // 重查余额
             UserInfo userInfo = userInfoMapper.selectById(userId);
             if (userInfo.getAccountBalance() == null || userInfo.getAccountBalance() < price) {
@@ -199,33 +207,56 @@ public class ChapterPurchaseServiceImpl implements ChapterPurchaseService {
             throw new BusinessException(ErrorCodeEnum.USER_REQUEST_PARAM_ERROR);
         }
 
-        // 2. 检查是否已退款
+        // 2. 快速预检是否已退款
         if (Objects.equals(consumeLog.getRefundStatus(), 1)) {
             throw new BusinessException(ErrorCodeEnum.USER_REFUND_NOT_ALLOWED);
         }
 
-        // 3. 恢复用户余额
+        // 3. 如果已有月度结算，检查是否已确认（已确认则不允许退款）
+        BookChapter bookChapter = bookChapterMapper.selectById(consumeLog.getProductId());
+        LocalDate consumeDate = consumeLog.getCreateTime().toLocalDate();
+        LocalDate incomeMonth = consumeDate.withDayOfMonth(1);
+
+        if (bookChapter != null && consumeLog.getAuthorId() != null) {
+            Integer confirmStatus = authorIncomeMapper.getConfirmStatus(
+                    consumeLog.getAuthorId(), bookChapter.getBookId(), incomeMonth);
+            if (confirmStatus != null && confirmStatus == 1) {
+                throw new BusinessException(ErrorCodeEnum.USER_SETTLEMENT_CONFIRMED);
+            }
+        }
+
+        // 4. CAS 原子更新退款状态（防止并发重复退款）
+        int affected = userConsumeLogMapper.casSetRefunded(consumeLogId);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCodeEnum.USER_REFUND_NOT_ALLOWED);
+        }
+
+        // 5. 恢复用户余额
         userInfoMapper.restoreBalance(userId, consumeLog.getAmount());
 
-        // 4. 标记消费记录为已退款
-        consumeLog.setRefundStatus(1);
-        consumeLog.setUpdateTime(LocalDateTime.now());
-        userConsumeLogMapper.updateById(consumeLog);
-
-        // 5. 扣减作者日收入
-        BookChapter bookChapter = bookChapterMapper.selectById(consumeLog.getProductId());
+        // 6. 扣减作者日收入（使用消费记录的日期）
         if (bookChapter != null && consumeLog.getAuthorId() != null) {
-            // 检查该用户当天是否还有其他购买，决定是否扣减 incomeNumber
             int remainingPurchases = authorIncomeDetailMapper.countUserPurchasesToday(
-                    consumeLog.getAuthorId(), bookChapter.getBookId(), userId, LocalDate.now());
+                    consumeLog.getAuthorId(), bookChapter.getBookId(), userId, consumeDate);
             int numberDecrement = (remainingPurchases <= 1) ? 1 : 0;
 
             authorIncomeDetailMapper.deductDailyIncome(
                     consumeLog.getAuthorId(),
                     bookChapter.getBookId(),
-                    LocalDate.now(),
+                    consumeDate,
                     consumeLog.getAmount(),
                     numberDecrement
+            );
+
+            // 7. 如果已存在月度结算记录（未确认），同步回滚结算金额
+            int afterTaxDeduct = consumeLog.getAmount()
+                    * (100 - financeProperties.getTaxRate()) / 100;
+            authorIncomeMapper.deductSettlement(
+                    consumeLog.getAuthorId(),
+                    bookChapter.getBookId(),
+                    incomeMonth,
+                    consumeLog.getAmount(),
+                    afterTaxDeduct
             );
         }
 

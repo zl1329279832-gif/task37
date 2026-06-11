@@ -39,6 +39,7 @@ class FreeLimitToggleTest {
     @Mock private UserInfoMapper userInfoMapper;
     @Mock private UserConsumeLogMapper userConsumeLogMapper;
     @Mock private AuthorIncomeDetailMapper authorIncomeDetailMapper;
+    @Mock private AuthorIncomeMapper authorIncomeMapper;
     @Mock private AuthorInfoMapper authorInfoMapper;
     @Mock private BookChapterCacheManager bookChapterCacheManager;
     @Mock private BookInfoCacheManager bookInfoCacheManager;
@@ -167,6 +168,40 @@ class FreeLimitToggleTest {
         assertTrue(result.isOk());
         assertNotNull(result.getData().getBookContent());
         assertTrue(result.getData().getIsPurchased());
+    }
+
+    @Test
+    void testPurchase_freeLimitToggledDuringLockWait_noCharge() {
+        // 场景：用户发起购买时章节非限免，但获取锁后章节已变为限免
+        BookChapter chapter = buildVipChapter();
+        chapter.setIsFreeLimit(0);
+
+        BookInfo bookInfo = new BookInfo();
+        bookInfo.setId(bookId);
+        bookInfo.setAuthorId(5L);
+        bookInfo.setIsFreeLimit(0);
+
+        // 第1次 selectById 返回非限免（锁外预检），第2次返回限免（锁内双重检查）
+        BookChapter freeLimitChapter = buildVipChapter();
+        freeLimitChapter.setIsFreeLimit(1);
+        when(bookChapterMapper.selectById(chapterId))
+                .thenReturn(chapter)          // 锁外：非限免
+                .thenReturn(freeLimitChapter); // 锁内：已切为限免
+
+        when(bookInfoMapper.selectById(bookId)).thenReturn(bookInfo);
+        when(userConsumeLogMapper.selectCount(any())).thenReturn(0L); // 未购买
+        when(lockManager.tryLock(anyString(), anyString(), anyLong())).thenReturn(true);
+
+        RestResp<BookContentAboutRespDto> result =
+                chapterPurchaseService.purchaseChapter(userId, chapterId);
+
+        assertTrue(result.isOk());
+        assertNotNull(result.getData().getBookContent());
+        assertFalse(result.getData().getNeedPurchase());
+
+        // 验证：未扣余额，未创建消费记录
+        verify(userInfoMapper, never()).deductBalance(anyLong(), anyInt());
+        verify(userConsumeLogMapper, never()).insert(any());
     }
 
     private BookChapter buildVipChapter() {

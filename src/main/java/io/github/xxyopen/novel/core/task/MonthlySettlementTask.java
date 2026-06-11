@@ -86,11 +86,20 @@ public class MonthlySettlementTask {
     @Transactional(rollbackFor = Exception.class)
     protected void settleOneAuthorBook(AuthorBookIncomePair pair,
                                        LocalDate monthStart, LocalDate monthEnd) {
+        // 0. 幂等检查：是否已存在该月度结算记录
+        int existing = authorIncomeMapper.countByAuthorBookMonth(
+                pair.getAuthorId(), pair.getBookId(), monthStart);
+        if (existing > 0) {
+            log.info("结算记录已存在，跳过: authorId={}, bookId={}, month={}",
+                    pair.getAuthorId(), pair.getBookId(), monthStart);
+            return;
+        }
+
         // 1. 汇总该作者+作品在月度内的日收入
         Integer totalIncome = authorIncomeDetailMapper.sumIncomeForMonth(
                 pair.getAuthorId(), pair.getBookId(), monthStart, monthEnd);
 
-        if (totalIncome == null || totalIncome == 0) {
+        if (totalIncome == null || totalIncome <= 0) {
             return;
         }
 
