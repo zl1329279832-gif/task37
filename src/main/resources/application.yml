@@ -93,6 +93,30 @@ novel:
     default-chapter-price: 10
     # 税率百分比，如 20 表示 20%
     tax-rate: 20
+    # 退款窗口时长（小时）
+    refund-window-hours: 72
+    # 会员折扣差价中平台补贴比例（%）
+    membership-subsidy-rate: 50
+    # 基础会员每月免费章节配额
+    basic-member-free-quota: 5
+    # 高级会员每月免费章节配额
+    premium-member-free-quota: 20
+    # 至尊会员每月免费章节配额
+    supreme-member-free-quota: 100
+    # 基础会员折扣（90=九折）
+    basic-member-discount: 90
+    # 高级会员折扣
+    premium-member-discount: 80
+    # 至尊会员折扣
+    supreme-member-discount: 60
+    # 基础会员赠送阅读券数量
+    basic-member-voucher-count: 1
+    # 高级会员赠送阅读券数量
+    premium-member-voucher-count: 3
+    # 至尊会员赠送阅读券数量
+    supreme-member-voucher-count: 10
+    # 阅读券有效天数
+    voucher-valid-days: 30
 
 
 

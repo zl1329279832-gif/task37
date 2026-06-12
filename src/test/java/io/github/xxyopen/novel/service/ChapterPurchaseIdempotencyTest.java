@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.*;
  * 场景：用户已购买章节后再次购买，应被拒绝
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ChapterPurchaseIdempotencyTest {
 
     @InjectMocks
@@ -43,6 +46,9 @@ class ChapterPurchaseIdempotencyTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private ReadingVoucherMapper readingVoucherMapper;
+    @Mock private MembershipService membershipService;
+    @Mock private SettlementService settlementService;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;

@@ -56,6 +56,11 @@ public class UserConsumeLog implements Serializable {
     private Integer producValue;
 
     /**
+     * 支付方式;0-普通余额 1-会员免费 2-会员折扣 3-阅读券
+     */
+    private Integer payType;
+
+    /**
      * 退款状态;0-正常 1-已退款
      */
     private Integer refundStatus;
@@ -132,6 +137,14 @@ public class UserConsumeLog implements Serializable {
         this.producValue = producValue;
     }
 
+    public Integer getPayType() {
+        return payType;
+    }
+
+    public void setPayType(Integer payType) {
+        this.payType = payType;
+    }
+
     public Integer getRefundStatus() {
         return refundStatus;
     }
@@ -174,6 +187,7 @@ public class UserConsumeLog implements Serializable {
         ", productId=" + productId +
         ", producName=" + producName +
         ", producValue=" + producValue +
+        ", payType=" + payType +
         ", refundStatus=" + refundStatus +
         ", authorId=" + authorId +
         ", createTime=" + createTime +

@@ -213,6 +213,91 @@ public class DatabaseConsts {
     }
 
     /**
+     * 用户会员表
+     */
+    public static class UserMembershipTable {
+
+        private UserMembershipTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_USER_ID = "user_id";
+
+        public static final String COLUMN_STATUS = "status";
+
+        public static final String COLUMN_EXPIRE_TIME = "expire_time";
+
+    }
+
+    /**
+     * 阅读券表
+     */
+    public static class ReadingVoucherTable {
+
+        private ReadingVoucherTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_USER_ID = "user_id";
+
+        public static final String COLUMN_STATUS = "status";
+
+        public static final String COLUMN_EXPIRE_TIME = "expire_time";
+
+        public static final String COLUMN_VOUCHER_TYPE = "voucher_type";
+
+    }
+
+    /**
+     * 待结算流水表
+     */
+    public static class PendingSettlementTable {
+
+        private PendingSettlementTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_CONSUME_LOG_ID = "consume_log_id";
+
+        public static final String COLUMN_AUTHOR_ID = "author_id";
+
+        public static final String COLUMN_BOOK_ID = "book_id";
+
+        public static final String COLUMN_STATUS = "status";
+
+        public static final String COLUMN_REFUND_WINDOW_END = "refund_window_end";
+
+    }
+
+    /**
+     * 退款冻结表
+     */
+    public static class RefundFreezeTable {
+
+        private RefundFreezeTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_CONSUME_LOG_ID = "consume_log_id";
+
+        public static final String COLUMN_STATUS = "status";
+
+    }
+
+    /**
+     * 用户消费记录表 - payType 列
+     */
+    public static class UserConsumeLogPayTypeConsts {
+
+        private UserConsumeLogPayTypeConsts() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_PAY_TYPE = "pay_type";
+
+    }
+
+    /**
      * 通用列枚举类
      */
     @Getter

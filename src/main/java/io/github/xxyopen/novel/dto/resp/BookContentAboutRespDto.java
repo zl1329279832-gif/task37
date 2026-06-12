@@ -53,4 +53,19 @@ public class BookContentAboutRespDto {
      */
     private String previewContent;
 
+    /**
+     * 会员免费阅读
+     */
+    private Boolean isMembershipFree;
+
+    /**
+     * 会员折扣价（屋币）
+     */
+    private Integer membershipDiscountPrice;
+
+    /**
+     * 可用阅读券数量
+     */
+    private Integer availableVoucherCount;
+
 }

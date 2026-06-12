@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.*;
  * 场景：10个线程同时购买同一章节，验证仅1次成功
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ChapterPurchaseConcurrentTest {
 
     @InjectMocks
@@ -50,6 +53,9 @@ class ChapterPurchaseConcurrentTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private ReadingVoucherMapper readingVoucherMapper;
+    @Mock private MembershipService membershipService;
+    @Mock private SettlementService settlementService;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;

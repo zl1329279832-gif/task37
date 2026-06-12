@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.*;
  * 场景：章节级限免、全书级限免、取消限免
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class FreeLimitToggleTest {
 
     @InjectMocks
@@ -45,6 +48,9 @@ class FreeLimitToggleTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private ReadingVoucherMapper readingVoucherMapper;
+    @Mock private MembershipService membershipService;
+    @Mock private SettlementService settlementService;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;

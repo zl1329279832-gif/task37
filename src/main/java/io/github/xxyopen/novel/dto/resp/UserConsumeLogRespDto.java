@@ -34,6 +34,11 @@ public class UserConsumeLogRespDto {
     private Integer amount;
 
     /**
+     * 支付方式;0-普通余额 1-会员免费 2-会员折扣 3-阅读券
+     */
+    private Integer payType;
+
+    /**
      * 退款状态;0-正常 1-已退款
      */
     private Integer refundStatus;

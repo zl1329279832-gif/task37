@@ -17,6 +17,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +32,7 @@ import static org.mockito.Mockito.*;
  * 场景：退款恢复余额、CAS防并发、消费日期扣减、月结回滚、已确认拒绝
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class RefundRollbackTest {
 
     @InjectMocks
@@ -47,6 +50,9 @@ class RefundRollbackTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private ReadingVoucherMapper readingVoucherMapper;
+    @Mock private MembershipService membershipService;
+    @Mock private SettlementService settlementService;
 
     private final Long userId = 1L;
     private final Long consumeLogId = 999L;

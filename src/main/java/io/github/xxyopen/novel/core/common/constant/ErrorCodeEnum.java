@@ -165,7 +165,52 @@ public enum ErrorCodeEnum {
     /**
      * 结算系统异常
      * */
-    SYSTEM_SETTLEMENT_ERROR("B0202","结算系统异常")
+    SYSTEM_SETTLEMENT_ERROR("B0202","结算系统异常"),
+
+    /**
+     * 会员已过期
+     */
+    USER_MEMBERSHIP_EXPIRED("A0601","会员已过期"),
+
+    /**
+     * 会员不存在
+     */
+    USER_MEMBERSHIP_NOT_EXIST("A0602","会员不存在"),
+
+    /**
+     * 免费章节配额已用完
+     */
+    USER_FREE_CHAPTER_QUOTA_EXHAUSTED("A0603","免费章节配额已用完"),
+
+    /**
+     * 阅读券不存在或已使用
+     */
+    USER_VOUCHER_INVALID("A0604","阅读券不存在或已使用"),
+
+    /**
+     * 阅读券已过期
+     */
+    USER_VOUCHER_EXPIRED("A0605","阅读券已过期"),
+
+    /**
+     * 退款窗口已关闭
+     */
+    USER_REFUND_WINDOW_CLOSED("A0606","退款窗口已关闭"),
+
+    /**
+     * 待结算流水不存在
+     */
+    USER_PENDING_SETTLEMENT_NOT_EXIST("A0607","待结算流水不存在"),
+
+    /**
+     * 用户已是会员
+     */
+    USER_ALREADY_MEMBER("A0608","用户已是会员"),
+
+    /**
+     * 结算批次处理失败
+     */
+    SYSTEM_SETTLEMENT_BATCH_ERROR("B0203","结算批次处理失败")
     ;
 
     /**
