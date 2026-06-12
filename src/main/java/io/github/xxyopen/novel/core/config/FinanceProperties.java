@@ -30,4 +30,24 @@ public class FinanceProperties {
      */
     private int settlementDay = 1;
 
+    /**
+     * 退款冻结天数
+     */
+    private int refundFreezeDays = 7;
+
+    /**
+     * 会员免费阅读平台补贴百分比
+     */
+    private int memberSubsidyRate = 10;
+
+    /**
+     * 平台活动补贴百分比
+     */
+    private int platformSubsidyRate = 5;
+
+    /**
+     * 结算批次大小
+     */
+    private int settlementBatchSize = 500;
+
 }

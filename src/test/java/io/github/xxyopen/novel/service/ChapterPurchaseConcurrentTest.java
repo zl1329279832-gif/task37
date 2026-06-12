@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.*;
  * 场景：10个线程同时购买同一章节，验证仅1次成功
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ChapterPurchaseConcurrentTest {
 
     @InjectMocks
@@ -50,6 +53,12 @@ class ChapterPurchaseConcurrentTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private io.github.xxyopen.novel.manager.cache.MemberInfoCacheManager memberInfoCacheManager;
+    @Mock private MemberInfoMapper memberInfoMapper;
+    @Mock private ReadingCouponMapper readingCouponMapper;
+    @Mock private MemberBenefitsSnapshotMapper memberBenefitsSnapshotMapper;
+    @Mock private SettlementService settlementService;
+    @Mock private RefundFreezeMapper refundFreezeMapper;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;
@@ -67,6 +76,13 @@ class ChapterPurchaseConcurrentTest {
         lenient().when(userConsumeLogMapper.insert(any())).thenReturn(1);
         lenient().when(authorIncomeDetailMapper.countUserPurchasesToday(anyLong(), anyLong(), anyLong(), any())).thenReturn(0);
         lenient().when(bookContentCacheManager.getBookContent(chapterId)).thenReturn("VIP章节完整内容");
+
+        // 会员和结算相关默认 mock（非会员，待结算记录创建）
+        lenient().when(memberInfoCacheManager.getActiveMemberInfo(anyLong())).thenReturn(null);
+        lenient().when(settlementService.createPendingSettlement(
+                anyLong(), anyLong(), anyLong(), anyLong(), any(), anyInt(),
+                anyInt(), anyInt(), anyInt(), anyInt()))
+                .thenReturn(new PendingSettlement());
     }
 
     @Test

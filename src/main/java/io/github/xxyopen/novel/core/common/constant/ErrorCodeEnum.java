@@ -165,7 +165,52 @@ public enum ErrorCodeEnum {
     /**
      * 结算系统异常
      * */
-    SYSTEM_SETTLEMENT_ERROR("B0202","结算系统异常")
+    SYSTEM_SETTLEMENT_ERROR("B0202","结算系统异常"),
+
+    /**
+     * 会员已过期
+     * */
+    MEMBER_EXPIRED("A0601","会员已过期"),
+
+    /**
+     * 免费阅读配额已用完
+     * */
+    MEMBER_FREE_READ_QUOTA_EXHAUSTED("A0602","免费阅读配额已用完"),
+
+    /**
+     * 阅读券不存在或已使用
+     * */
+    COUPON_NOT_AVAILABLE("A0603","阅读券不存在或已使用"),
+
+    /**
+     * 阅读券已过期
+     * */
+    COUPON_EXPIRED("A0604","阅读券已过期"),
+
+    /**
+     * 阅读券不满足最低消费
+     * */
+    COUPON_MIN_PURCHASE_NOT_MET("A0605","阅读券不满足最低消费"),
+
+    /**
+     * 退款冻结中请稍后重试
+     * */
+    REFUND_FROZEN("A0606","退款冻结中请稍后重试"),
+
+    /**
+     * 待结算记录不存在
+     * */
+    PENDING_SETTLEMENT_NOT_FOUND("A0607","待结算记录不存在"),
+
+    /**
+     * 结算批次处理失败
+     * */
+    SETTLEMENT_BATCH_FAILED("B0301","结算批次处理失败"),
+
+    /**
+     * 会员等级不存在
+     * */
+    MEMBER_LEVEL_NOT_EXIST("A0608","会员等级不存在")
     ;
 
     /**

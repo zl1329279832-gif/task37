@@ -92,4 +92,14 @@ public class ApiRouterConsts {
      */
     public static final String API_FRONT_BOOK_CONTENT_VIP_URL_PREFIX = API_FRONT_BOOK_URL_PREFIX + "/content/vip";
 
+    /**
+     * 会员模块请求路径前缀
+     */
+    public static final String MEMBER_URL_PREFIX = "/member";
+
+    /**
+     * 前台门户会员相关API请求路径前缀
+     */
+    public static final String API_FRONT_MEMBER_URL_PREFIX = API_FRONT_URL_PREFIX + MEMBER_URL_PREFIX;
+
 }

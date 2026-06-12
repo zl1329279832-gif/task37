@@ -213,6 +213,92 @@ public class DatabaseConsts {
     }
 
     /**
+     * 会员信息表
+     */
+    public static class MemberInfoTable {
+
+        private MemberInfoTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_USER_ID = "user_id";
+        public static final String COLUMN_EXPIRE_TIME = "expire_time";
+        public static final String COLUMN_STATUS = "status";
+    }
+
+    /**
+     * 阅读券表
+     */
+    public static class ReadingCouponTable {
+
+        private ReadingCouponTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_USER_ID = "user_id";
+        public static final String COLUMN_USE_STATUS = "use_status";
+    }
+
+    /**
+     * 待结算流水表
+     */
+    public static class PendingSettlementTable {
+
+        private PendingSettlementTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_AUTHOR_ID = "author_id";
+        public static final String COLUMN_BOOK_ID = "book_id";
+        public static final String COLUMN_STATUS = "status";
+        public static final String COLUMN_FREEZE_END_TIME = "freeze_end_time";
+        public static final String COLUMN_CONSUME_LOG_ID = "consume_log_id";
+        public static final String COLUMN_BATCH_ID = "batch_id";
+        public static final String COLUMN_SETTLEMENT_TYPE = "settlement_type";
+    }
+
+    /**
+     * 结算批次表
+     */
+    public static class SettlementBatchTable {
+
+        private SettlementBatchTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_BATCH_NO = "batch_no";
+        public static final String COLUMN_STATUS = "status";
+    }
+
+    /**
+     * 退款冻结表
+     */
+    public static class RefundFreezeTable {
+
+        private RefundFreezeTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_CONSUME_LOG_ID = "consume_log_id";
+        public static final String COLUMN_STATUS = "status";
+    }
+
+    /**
+     * 作者收入拆分表
+     */
+    public static class AuthorIncomeBreakdownTable {
+
+        private AuthorIncomeBreakdownTable() {
+            throw new IllegalStateException(SystemConfigConsts.CONST_INSTANCE_EXCEPTION_MSG);
+        }
+
+        public static final String COLUMN_AUTHOR_ID = "author_id";
+        public static final String COLUMN_BOOK_ID = "book_id";
+        public static final String COLUMN_BATCH_ID = "batch_id";
+        public static final String COLUMN_INCOME_TYPE = "income_type";
+    }
+
+    /**
      * 通用列枚举类
      */
     @Getter

@@ -95,6 +95,16 @@ public class CacheConsts {
     public static final String AUTHOR_INFO_CACHE_NAME = "authorInfoCache";
 
     /**
+     * 会员信息缓存
+     */
+    public static final String MEMBER_INFO_CACHE_NAME = "memberInfoCache";
+
+    /**
+     * 阅读券缓存
+     */
+    public static final String READING_COUPON_CACHE_NAME = "readingCouponCache";
+
+    /**
      * 缓存配置常量
      */
     public enum CacheEnum {
@@ -123,7 +133,11 @@ public class CacheConsts {
 
         USER_INFO_CACHE(2,USER_INFO_CACHE_NAME,60 * 60 * 24, 10000),
 
-        AUTHOR_INFO_CACHE(2,AUTHOR_INFO_CACHE_NAME,60 * 60 * 48, 1000);
+        AUTHOR_INFO_CACHE(2,AUTHOR_INFO_CACHE_NAME,60 * 60 * 48, 1000),
+
+        MEMBER_INFO_CACHE(2, MEMBER_INFO_CACHE_NAME, 60 * 60 * 12, 5000),
+
+        READING_COUPON_CACHE(2, READING_COUPON_CACHE_NAME, 60 * 30, 10000);
 
         /**
          * 缓存类型 0-本地 1-本地和远程 2-远程

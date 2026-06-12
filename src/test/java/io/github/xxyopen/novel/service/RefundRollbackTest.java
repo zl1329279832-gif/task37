@@ -17,6 +17,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +32,7 @@ import static org.mockito.Mockito.*;
  * 场景：退款恢复余额、CAS防并发、消费日期扣减、月结回滚、已确认拒绝
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class RefundRollbackTest {
 
     @InjectMocks
@@ -47,6 +50,12 @@ class RefundRollbackTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private io.github.xxyopen.novel.manager.cache.MemberInfoCacheManager memberInfoCacheManager;
+    @Mock private MemberInfoMapper memberInfoMapper;
+    @Mock private ReadingCouponMapper readingCouponMapper;
+    @Mock private MemberBenefitsSnapshotMapper memberBenefitsSnapshotMapper;
+    @Mock private SettlementService settlementService;
+    @Mock private RefundFreezeMapper refundFreezeMapper;
 
     private final Long userId = 1L;
     private final Long consumeLogId = 999L;
@@ -63,6 +72,9 @@ class RefundRollbackTest {
         var field = ChapterPurchaseServiceImpl.class.getDeclaredField("financeProperties");
         field.setAccessible(true);
         field.set(chapterPurchaseService, props);
+
+        // 默认退款冻结查询返回null（无冻结记录）
+        lenient().when(refundFreezeMapper.selectByConsumeLogId(anyLong())).thenReturn(null);
     }
 
     @Test
@@ -102,9 +114,10 @@ class RefundRollbackTest {
                 eq(authorId), eq(bookId), eq(consumeDate.withDayOfMonth(1)), eq(purchaseAmount), eq(8)))
                 .thenReturn(0);
 
+        when(refundFreezeMapper.selectByConsumeLogId(anyLong())).thenReturn(null);
+
         // 执行退款
         RestResp<Void> result = chapterPurchaseService.refund(userId, consumeLogId);
-
         assertTrue(result.isOk());
 
         // 验证 CAS 原子更新

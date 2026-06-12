@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.*;
  * 场景：用户已购买章节后再次购买，应被拒绝
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ChapterPurchaseIdempotencyTest {
 
     @InjectMocks
@@ -43,6 +46,12 @@ class ChapterPurchaseIdempotencyTest {
     @Mock private BookInfoCacheManager bookInfoCacheManager;
     @Mock private BookContentCacheManager bookContentCacheManager;
     @Mock private RedisDistributedLockManager lockManager;
+    @Mock private io.github.xxyopen.novel.manager.cache.MemberInfoCacheManager memberInfoCacheManager;
+    @Mock private MemberInfoMapper memberInfoMapper;
+    @Mock private ReadingCouponMapper readingCouponMapper;
+    @Mock private MemberBenefitsSnapshotMapper memberBenefitsSnapshotMapper;
+    @Mock private SettlementService settlementService;
+    @Mock private RefundFreezeMapper refundFreezeMapper;
 
     private final Long userId = 1L;
     private final Long chapterId = 100L;
@@ -55,6 +64,13 @@ class ChapterPurchaseIdempotencyTest {
         var field = ChapterPurchaseServiceImpl.class.getDeclaredField("financeProperties");
         field.setAccessible(true);
         field.set(chapterPurchaseService, props);
+
+        // 会员和结算相关默认 mock
+        lenient().when(memberInfoCacheManager.getActiveMemberInfo(anyLong())).thenReturn(null);
+        lenient().when(settlementService.createPendingSettlement(
+                anyLong(), anyLong(), anyLong(), anyLong(), any(), anyInt(),
+                anyInt(), anyInt(), anyInt(), anyInt()))
+                .thenReturn(new PendingSettlement());
     }
 
     @Test

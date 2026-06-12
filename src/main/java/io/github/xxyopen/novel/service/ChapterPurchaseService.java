@@ -24,6 +24,16 @@ public interface ChapterPurchaseService {
     RestResp<BookContentAboutRespDto> purchaseChapter(Long userId, Long chapterId);
 
     /**
+     * 购买 VIP 章节（可使用阅读券）
+     *
+     * @param userId    当前用户ID
+     * @param chapterId 章节ID
+     * @param couponId  阅读券ID（可为 null）
+     * @return 购买后的章节内容信息
+     */
+    RestResp<BookContentAboutRespDto> purchaseChapterWithCoupon(Long userId, Long chapterId, Long couponId);
+
+    /**
      * 获取章节内容（含 VIP 访问控制）
      * 如果章节是 VIP 且未购买/非限免，返回预览 + 购买提示
      * 如果是免费章节或已购买/限免，返回完整内容
